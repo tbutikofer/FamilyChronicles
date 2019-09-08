@@ -39,7 +39,7 @@ class LaTeXDoc(BaseDoc, TextDoc):
         if self._open_cell is None:
             self._backend.write(text)
         else:
-            self._open_cell = (self._open_cell[0] + text, self._open_cell[1])
+            self.__append_to_cell(text)
 
     def start_paragraph(self, style_name, leader=None):
         """Paragraphs handling - A Gramps paragraph is any
@@ -51,12 +51,19 @@ class LaTeXDoc(BaseDoc, TextDoc):
         pass
 
     def start_bold(self):
-        """Bold face"""
-        pass
+        control = r"\textbf{"
+        if self._open_cell is None:
+            self._backend.write(control)
+        else:
+            self.__append_to_cell(control)
 
     def end_bold(self):
         """End bold face"""
-        pass
+        control = r"}"
+        if self._open_cell is None:
+            self._backend.write(control)
+        else:
+            self.__append_to_cell(control)
 
     def start_table(self, name, style_name):
         """Begin new table"""
@@ -67,7 +74,9 @@ class LaTeXDoc(BaseDoc, TextDoc):
     def end_table(self):
         """Close the table environment"""
         self._backend.write(r"\end{tabular}" + "\n")
-        self._backend.write(r"\\\\\noindent\rule[0.5ex]{\linewidth}{1pt}" + "\n")
+        self._backend.write(r"\vspace{3.6cm}" + "\n")
+        self._backend.write(r"\\\\\noindent\rule[0.6ex]{\linewidth}{1pt}" \
+            + "\n")
         self._backend.write(r"\end{table}" + "\n")
 
     def start_row(self):
@@ -87,7 +96,7 @@ class LaTeXDoc(BaseDoc, TextDoc):
         self._open_cell = ("", 1)
         if span > 1:
             self._open_cell = (r"\multicolumn{" + \
-                               "{}".format(span) + r"}{c}{", span)
+                               "{}".format(span) + r"}{l}{", span)
 
     def end_cell(self):
         """Prepares for next cell"""
@@ -113,9 +122,11 @@ class LaTeXDoc(BaseDoc, TextDoc):
         "Forces a page break, creating a new page"
         self._backend.write(r"\newpage")
 
+    def __append_to_cell(self, text):
+        self._open_cell = (self._open_cell[0] + text, self._open_cell[1])
+
 class LaTeXBackend(DocBackend):
     """
     Implementation of docbackend for latex docs.
     File and File format management for latex docs
     """
-        

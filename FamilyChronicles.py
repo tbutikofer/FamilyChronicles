@@ -30,6 +30,7 @@ from gramps.gen.plug.report import Report
 from gramps.gen.plug.report import MenuReportOptions
 from gramps.gen import datehandler
 from gramps.gen.display.place import displayer as place_displayer
+from gramps.gen.lib.eventtype import EventType
 
 class FamilyChronicles(Report):
     """
@@ -56,12 +57,16 @@ class FamilyChronicles(Report):
         mother_handle = family.get_mother_handle()
         father = self.database.get_person_from_handle(father_handle)
         mother = self.database.get_person_from_handle(mother_handle)
+        heimatort_ref = self.__get_heimatort_event_ref(mother)
+        (_, _, mother_heimatort) = self.__get_simple_event(heimatort_ref)
         marriage_ref = self.__get_marriage_event_ref(family)
 
-        self.__write_parent(father)
-        self.doc.write_text(r"\\" + "\n")
-        self.__write_parent(mother, marriage_ref)
-        self.doc.write_text(r"\\" + "\n")
+        self.__write_parent(father, is_main_person=True)
+        self.__write_parent_of(father)
+        self.__write_parent(mother, marriage_ref, mother_heimatort)
+        self.__write_parent_of(mother)
+        self.doc.write_text(r"\\"+"\n")
+
         do_person_report = len(family.get_child_ref_list()) * [False]
         for idx, child_ref in enumerate(family.get_child_ref_list()):
             child = self.database.get_person_from_handle(child_ref.ref)
@@ -73,9 +78,9 @@ class FamilyChronicles(Report):
                 child = self.database.get_person_from_handle(child_ref.ref)
                 self.__write_person_report(child)
 
-    def __write_basic_person(self, person, full_name=True):
+    def __write_basic_person(self, person, full_name=True,
+                             is_main_person=False):
         name = self.__get_simple_name(person)
-        print(name)
 
         (birth_type, birth_date, birth_place) = \
             self.__get_simple_event(person.get_birth_ref())
@@ -83,11 +88,15 @@ class FamilyChronicles(Report):
             self.__get_simple_event(person.get_death_ref())
 
         self.doc.start_cell('family_cell')
+        if is_main_person:
+            self.doc.start_bold()
         if full_name:
             name_text = "{} {}".format(name[0], name[1])
         else:
             name_text = name[0]
         self.doc.write_text(name_text)
+        if is_main_person:
+            self.doc.end_bold()
         self.doc.end_cell()
 
         self.doc.start_cell('family_cell')
@@ -121,27 +130,68 @@ class FamilyChronicles(Report):
         self.doc.write_text(death_place)
         self.doc.end_cell()
 
-    def __write_parent(self, person, marriage_ref = None):
+    def __write_parent(self, person, marriage_ref=None, heimatort=None,
+                       is_main_person=False):
         self.doc.start_row()
-        self.__write_basic_person(person)
+        # 8 cells
+        self.__write_basic_person(person, is_main_person=is_main_person)
+
+        self.doc.start_cell('family_cell')
+        self.doc.end_cell()
 
         if marriage_ref:
             (marriage_type, marriage_date, marriage_place) = \
                 self.__get_simple_event(marriage_ref)
-
-            self.doc.start_cell('family_cell')
+            # 3 cells
+            if not marriage_place:
+                marriage_place = ""
+            self.__write_marriage(marriage_type, marriage_date, marriage_place)
+        else:
+            self.doc.start_cell('family_cell', 3)
             self.doc.end_cell()
 
-            self.__write_marriage(marriage_type, marriage_date, marriage_place)
-            self.doc.start_cell('family_cell', 2)
-        else:
-            self.doc.start_cell('family_cell', 7)
+        self.doc.start_cell('family_cell')
+        if heimatort:
+            self.doc.write_text("von {}".format(heimatort))
+        self.doc.end_cell()
+
+        self.doc.start_cell('family_cell', 2)
         self.doc.end_cell()
 
         self.doc.end_row()
 
+    def __write_parent_of(self, person):
+        family_handle = person.get_parent_family_handle_list()
+        father_name = ["?", ""]
+        mother_name = ["?", ""]
+
+        if family_handle:
+            family = self.database.get_family_from_handle(family_handle[0])
+            father_handle = family.get_father_handle()
+            mother_handle = family.get_mother_handle()
+            if father_handle:
+                father_name = self.__get_simple_name(
+                    self.database.get_person_from_handle(father_handle)
+                )
+            if mother_handle:
+                mother_name = self.__get_simple_name(
+                    self.database.get_person_from_handle(mother_handle)
+                )
+        parent_names = "{} {} und {} {}".format(
+            father_name[0], father_name[1], mother_name[0], mother_name[1]
+        )
+        self.doc.start_row()
+        self.doc.start_cell('family_cell', 4)
+        self.doc.write_text(parent_names)
+        self.doc.end_cell()
+        self.doc.start_cell('family_cell', 11)
+        self.doc.end_cell()
+        self.doc.end_row()
+
+
     def __write_child(self, person):
         self.doc.start_row()
+        # 8 cells
         self.__write_basic_person(person, full_name=False)
         followup = True
 
@@ -155,7 +205,9 @@ class FamilyChronicles(Report):
             for idx, family_handle in enumerate(family_handle_list):
                 if idx > 0:
                     self.doc.start_row()
+                    #no basic person
                     self.doc.start_cell('family_cell', 8)
+                    self.doc.end_cell()
 
                 family = self.database.get_family_from_handle(family_handle)
                 father_handle = family.get_father_handle()
@@ -167,12 +219,16 @@ class FamilyChronicles(Report):
                 spouse = self.database.get_person_from_handle(spouse_handle)
                 spouse_name = self.__get_simple_name(spouse)
                 marriage_ref = self.__get_marriage_event_ref(family)
-                (marriage_type, marriage_date, marriage_place) = \
+                (marriage_type, marriage_date, _) = \
                     self.__get_simple_event(marriage_ref)
+                heimatort_ref = self.__get_heimatort_event_ref(spouse)
+                (_, _, spouse_heimatort) = \
+                    self.__get_simple_event(heimatort_ref)
 
                 self.doc.start_cell('family_cell')
                 self.doc.end_cell()
 
+                # 2 cells
                 self.__write_marriage(marriage_type, marriage_date)
 
                 self.doc.start_cell('family_cell')
@@ -181,7 +237,12 @@ class FamilyChronicles(Report):
                         "{} {}".format(spouse_name[0], spouse_name[1]))
                 self.doc.end_cell()
 
-                self.doc.start_cell('family_cell', 3)
+                self.doc.start_cell('family_cell')
+                if spouse_heimatort:
+                    self.doc.write_text("von {}".format(spouse_heimatort))
+                self.doc.end_cell()
+
+                self.doc.start_cell('family_cell', 2)
                 self.doc.end_cell()
 
                 self.doc.end_row()
@@ -189,19 +250,23 @@ class FamilyChronicles(Report):
 
         return followup
 
-    def __write_marriage(self, marriage_type, marriage_date, marriage_place=None):
+    def __write_marriage(self, marriage_type,
+                         marriage_date, marriage_place=None):
         self.doc.start_cell('family_cell')
         if marriage_type:
             self.doc.write_text(
                 r"\gtrsymMarried" \
                     if marriage_type.is_marriage() else "?")
+        else:
+            # default, in case only spouse is known
+            self.doc.write_text(r"\gtrsymMarried")
         self.doc.end_cell()
 
         self.doc.start_cell('family_cell')
         self.doc.write_text(marriage_date)
         self.doc.end_cell()
 
-        if marriage_place:
+        if marriage_place is not None:
             self.doc.start_cell('family_cell')
             self.doc.write_text(marriage_place)
             self.doc.end_cell()
@@ -242,6 +307,17 @@ class FamilyChronicles(Report):
                 marriage_event_ref = event_ref
                 break
         return marriage_event_ref
+
+    def __get_heimatort_event_ref(self, person):
+        heimatort_event_ref = None
+        event_ref_list = person.get_event_ref_list()
+        for event_ref in event_ref_list:
+            event = self.database.get_event_from_handle(event_ref.ref)
+            event_type = event.get_type()
+            if event_type.value == EventType.CENSUS:
+                heimatort_event_ref = event_ref
+                break
+        return heimatort_event_ref
 
 class FamilyChroniclesOptions(MenuReportOptions):
     """
