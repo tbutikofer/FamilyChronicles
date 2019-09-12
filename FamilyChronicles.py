@@ -30,6 +30,7 @@ from gramps.gen.plug.report import Report
 from gramps.gen.plug.report import MenuReportOptions
 from gramps.gen import datehandler
 from gramps.gen.display.place import displayer as place_displayer
+import gramps.gen.datehandler
 from gramps.gen.lib.eventtype import EventType
 
 class FamilyChronicles(Report):
@@ -53,6 +54,7 @@ class FamilyChronicles(Report):
 
     def __write_family(self, family):
         self.doc.start_table('myTable', 'family_table')
+        self.doc.make_label(family.gramps_id)
         father_handle = family.get_father_handle()
         mother_handle = family.get_mother_handle()
         father = self.database.get_person_from_handle(father_handle)
@@ -64,7 +66,7 @@ class FamilyChronicles(Report):
         self.__write_parent(father, is_main_person=True)
         self.__write_parent_of(father)
         self.__write_parent(mother, marriage_ref, mother_heimatort)
-        self.__write_parent_of(mother)
+        #self.__write_parent_of(mother)
         self.doc.write_text(r"\\"+"\n")
 
         do_person_report = len(family.get_child_ref_list()) * [False]
@@ -242,7 +244,12 @@ class FamilyChronicles(Report):
                     self.doc.write_text("von {}".format(spouse_heimatort))
                 self.doc.end_cell()
 
-                self.doc.start_cell('family_cell', 2)
+                self.doc.start_cell('family_cell')
+                self.doc.end_cell()
+                self.doc.start_cell('family_cell')
+                if father_handle == person.handle:
+                    self.doc.write_text("S. ")
+                    self.doc.make_pageref(family.gramps_id)
                 self.doc.end_cell()
 
                 self.doc.end_row()
@@ -280,8 +287,13 @@ class FamilyChronicles(Report):
     def __get_simple_event(self, event_ref):
         if event_ref:
             event = self.database.get_event_from_handle(event_ref.ref)
+            date_text = datehandler.get_date(event)
+            date_split = date_text.split('-')
+            if len(date_split) == 3:
+                date_text = "{}.{}.{}".format(date_split[2], date_split[1], date_split[0])
+
             event_date = event.get_date_object()
-            date_text = datehandler.displayer.display(event_date)
+            # date_text = datehandler.displayer.display(event_date)
             place_handle = event.get_place_handle()
             event_type = event.get_type()
         else:

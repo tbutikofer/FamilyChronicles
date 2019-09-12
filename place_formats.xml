@@ -1,4 +1,4 @@
 <!-- copy to ~/.gramps , displays only village/town names-->
 <place_formats>
-	<format name="simple" levels="1" language="de" street="0" reverse="False"/>
+	<format name="simple" levels="-2" language="de" street="0" reverse="False"/>
 </place_formats>

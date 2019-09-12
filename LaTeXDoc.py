@@ -22,15 +22,13 @@ class LaTeXDoc(BaseDoc, TextDoc):
         self._backend = LaTeXBackend(filename)
         self._backend.open()
         self._backend.write(
-            r"\documentclass[a4paper,landscape]{article}" + "\n")
-        self._backend.write(r"\usepackage[a4paper,landscape]{geometry}" + "\n")
+            r"\documentclass[a4paper,landscape,12pt]{article}" + "\n")
+        self._backend.write(r"\usepackage[a4paper,landscape,left=2cm]{geometry}" + "\n")
         self._backend.write(r"\usepackage{genealogytree}" + "\n")
         self._backend.write(r"\begin{document}" + "\n")
-        self._backend.write(r"\begin{center}" + "\n")
 
     def close(self):
         """Clean up and close the document"""
-        self._backend.write(r"\end{center}" + "\n")
         self._backend.write(r"\end{document}")
         self._backend.close()
 
@@ -121,6 +119,13 @@ class LaTeXDoc(BaseDoc, TextDoc):
     def page_break(self):
         "Forces a page break, creating a new page"
         self._backend.write(r"\newpage")
+
+    def make_label(self, label):
+
+        self.write_text(r"\label{" + label +"}")
+
+    def make_pageref(self, label):
+        self.write_text(r"\pageref{" + label +"}")
 
     def __append_to_cell(self, text):
         self._open_cell = (self._open_cell[0] + text, self._open_cell[1])
