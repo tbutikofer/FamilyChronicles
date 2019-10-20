@@ -4,7 +4,7 @@ LaTex generator methods.
 from gramps.gen.plug.docgen import BaseDoc, TextDoc
 from gramps.gen.plug.docbackend import DocBackend
 
-class LaTeXDoc(BaseDoc, TextDoc):
+class SimpleLaTeXDoc(BaseDoc, TextDoc):
     """
     Document method handler.
     """
@@ -16,21 +16,22 @@ class LaTeXDoc(BaseDoc, TextDoc):
         self._collect_cells = False
         self._open_cell = None
 
-    def open(self, filename):
-        """Opens the specified file, making sure that it has the
-        extension of .tex"""
-        self._backend = LaTeXBackend(filename)
-        self._backend.open()
-        self._backend.write(
-            r"\documentclass[a4paper,landscape,12pt]{article}" + "\n")
-        self._backend.write(r"\usepackage[a4paper,landscape,left=2cm]{geometry}" + "\n")
-        self._backend.write(r"\usepackage{genealogytree}" + "\n")
-        self._backend.write(r"\begin{document}" + "\n")
+    # def open(self, filename):
+    #     """Opens the specified file, making sure that it has the
+    #     extension of .tex"""
+    #     self._backend = DocBackend(filename)
+    #     self._backend.open()
+    #     # self._backend.write(
+    #     #     r"\documentclass[a4paper,landscape,10pt]{article}" + "\n")
+    #     self._backend.write(r"\documentclass[9pt]{extarticle}" + "\n")
+    #     self._backend.write(r"\usepackage[a4paper,landscape,left=2cm]{geometry}" + "\n")
+    #     self._backend.write(r"\usepackage{genealogytree}" + "\n")
+    #     self._backend.write(r"\begin{document}" + "\n")
 
-    def close(self):
-        """Clean up and close the document"""
-        self._backend.write(r"\end{document}")
-        self._backend.close()
+    # def close(self):
+    #     """Clean up and close the document"""
+    #     self._backend.write(r"\end{document}")
+    #     self._backend.close()
 
     def write_text(self, text, mark=None, links=False):
         """Write the text to the file"""
@@ -67,7 +68,24 @@ class LaTeXDoc(BaseDoc, TextDoc):
         """Begin new table"""
         self._backend.write(r"\begin{table}" + "\n")
         self._backend.write(
-            r"\begin{tabular}{l r r l c r r l c r r l l c l}" + "\n")
+            r"\begin{tabular}{" + "\n" + \
+            r"p{\namewidth}" + "\n" + \
+            r">{\centering}p{\symbolwidth}" + "\n" + \
+            r">{\raggedleft\arraybackslash}p{\datewidth}" + "\n" + \
+            r"p{\locationwidth}" + "\n" + \
+            r"p{\gapwidth}" + "\n" + \
+            r">{\centering}p{\symbolwidth}" + "\n" + \
+            r">{\raggedleft\arraybackslash}p{\datewidth}" + "\n" + \
+            r"p{\locationwidth}" + "\n" + \
+            r"p{\gapwidth}" + "\n" + \
+            r">{\centering}p{\symbolwidth}" + "\n" + \
+            r">{\raggedleft\arraybackslash}p{\datewidth}" + "\n" + \
+            r"p{\namewidth}" + "\n" + \
+            r"p{\locationwidth}" + "\n" + \
+            r"p{\gapwidth}" + "\n" + \
+            r"p{\referencewidth}" + "\n" + \
+            r"}" + "\n")
+
 
     def end_table(self):
         """Close the table environment"""
@@ -129,9 +147,3 @@ class LaTeXDoc(BaseDoc, TextDoc):
 
     def __append_to_cell(self, text):
         self._open_cell = (self._open_cell[0] + text, self._open_cell[1])
-
-class LaTeXBackend(DocBackend):
-    """
-    Implementation of docbackend for latex docs.
-    File and File format management for latex docs
-    """
